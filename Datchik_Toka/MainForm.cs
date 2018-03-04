@@ -1,8 +1,5 @@
 ﻿using System;
-using System.Windows.Forms.DataVisualization.Charting;
 using System.Windows.Forms;
-using System.Collections.Generic;
-using ZedGraph;
 using System.IO.Ports;
 using System.Threading;
 
