@@ -1,102 +1,108 @@
 ﻿using System;
 using System.Windows.Forms.DataVisualization.Charting;
 using System.Windows.Forms;
+using System.Collections.Generic;
+using ZedGraph;
+using System.IO.Ports;
+using System.Threading;
 
 namespace Datchik_Toka
 {
     public partial class Form1 : Form
     {
-        private double SelectionStart = double.NaN;
+        private int _cx;
+        private delegate void SetTextDeleg(string text);
+        private string _data;
+        private double _am;
+        private double _avr;
 
         public Form1()
         {
             InitializeComponent();
-            this.chart1.Click += new System.EventHandler(this.chart1_Click);
-        }
-
-        protected override bool ProcessDialogKey(Keys keyData)
-        {
-            // Avoid dialog processing of arrow keys
-            if (keyData == Keys.Left || keyData == Keys.Right)
+            _cx = 1;
+            _avr = 0;
+            chart1.ChartAreas[0].AxisX.Maximum = 20;
+            chart1.ChartAreas[0].AxisX.Minimum = 0;
+            chart1.ChartAreas[0].AxisX.Title = "t, c";
+            chart1.ChartAreas[0].AxisY.Title = "I, A";
+            chart1.ChartAreas[0].AxisX.TitleFont = new System.Drawing.Font("Arial", 16);
+            chart1.ChartAreas[0].AxisY.TitleFont = new System.Drawing.Font("Arial", 16);
+            // получаем список доступных портов
+            string[] ports = SerialPort.GetPortNames();
+            if (ports.Length == 0)
             {
-                return false;
+                MessageBox.Show("Устройств не найдено!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                button1.Enabled = false;
+                return;
             }
-            return base.ProcessDialogKey(keyData);
-        }
-
-        private void chart1_Click(object sender, System.EventArgs e)
-        {
-            // Set input focus to the chart control
-            chart1.Focus();
-
-            // Set the selection start variable to that of the current position
-            this.SelectionStart = chart1.ChartAreas["Default"].CursorX.Position;
-        }
-
-        private void ProcessSelect(System.Windows.Forms.KeyEventArgs e)
-        {
-            // Process keyboard keys
-            if (e.KeyCode == Keys.Right)
-            {
-                // Make sure the selection start value is assigned
-                if (this.SelectionStart == double.NaN)
-                    this.SelectionStart = chart1.ChartAreas["Default"].CursorX.Position;
-
-                // Set the new cursor position 
-                chart1.ChartAreas["Default"].CursorX.Position += chart1.ChartAreas["Default"].CursorX.Interval;
-            }
-            else if (e.KeyCode == Keys.Left)
-            {
-                // Make sure the selection start value is assigned
-                if (this.SelectionStart == double.NaN)
-                    this.SelectionStart = chart1.ChartAreas["Default"].CursorX.Position;
-
-                // Set the new cursor position 
-                chart1.ChartAreas["Default"].CursorX.Position -= chart1.ChartAreas["Default"].CursorX.Interval;
-            }
-
-            // If the cursor is outside the view, set the view
-            // so that the cursor can be seen
-            SetView();
-
-
-            chart1.ChartAreas["Default"].CursorX.SelectionStart = this.SelectionStart;
-            chart1.ChartAreas["Default"].CursorX.SelectionEnd = chart1.ChartAreas["Default"].CursorX.Position;
-        }
-
-        private void SetView()
-        {
-            // Keep the cursor from leaving the max and min axis points
-            if (chart1.ChartAreas["Default"].CursorX.Position < 0)
-                chart1.ChartAreas["Default"].CursorX.Position = 0;
-
-            else if (chart1.ChartAreas["Default"].CursorX.Position > 75)
-                chart1.ChartAreas["Default"].CursorX.Position = 75;
-
-
-            // Move the view to keep the cursor visible
-            if (chart1.ChartAreas["Default"].CursorX.Position < chart1.ChartAreas["Default"].AxisX.ScaleView.Position)
-                chart1.ChartAreas["Default"].AxisX.ScaleView.Position = chart1.ChartAreas["Default"].CursorX.Position;
-
-            else if ((chart1.ChartAreas["Default"].CursorX.Position >
-                (chart1.ChartAreas["Default"].AxisX.ScaleView.Position + chart1.ChartAreas["Default"].AxisX.ScaleView.Size)))
-            {
-                chart1.ChartAreas["Default"].AxisX.ScaleView.Position =
-                    (chart1.ChartAreas["Default"].CursorX.Position - chart1.ChartAreas["Default"].AxisX.ScaleView.Size);
-            }
+            // выводим список портов
+            foreach (string p in ports)
+                combo_port.Items.Add(p);
+            serial_port.BaudRate = 9600; //указываем скорость
+            serial_port.Parity = Parity.None;
+            serial_port.Handshake = Handshake.None;
+            serial_port.DataBits = 8;
+            combo_port.SelectedIndex = 0;
         }
 
         private void button1_Click(object sender, EventArgs e)
         {
-            int[] kek = new int[200];
-            Random r = new Random();
-            int[] x = new int[200];
-            for (int i = 0; i < 200; i++)
-            {
-                r.Next(1, 200);
-                x[i] = i;
-            }
-            chart1.Series[0].Points.DataBindXY(x, kek);
+            label2.Visible = true;
+            label3.Visible = true;
+            timer1.Start();
         }
+
+        private void timer1_Tick(object sender, EventArgs e)
+        {
+            if (_cx > 20)
+            {
+                chart1.ChartAreas[0].AxisX.Maximum = _cx;
+                chart1.ChartAreas[0].AxisX.Minimum = _cx - 20;
+                //chart1.Series[0].Points.RemoveAt(0);
+            }
+            chart1.Series[0].Points.AddXY(_cx, _am);
+            _avr += _am;
+            double x = _avr / _cx;
+            label3.Text = Convert.ToString(Math.Round(x, 3));
+            _cx++;
+        }
+
+        private void SerialPortDataReceived(object sender, SerialDataReceivedEventArgs e)
+        {
+            Thread.Sleep(50);
+            try
+            {
+                _data = serial_port.ReadExisting();
+            }
+            catch (Exception) { }
+            Thread.Sleep(50);
+            // Привлечение делегата на потоке UI, и отправка данных, которые
+            // были приняты привлеченным методом.
+            // ---- Метод "si_dataReceived" будет выполнен в потоке UI,
+            // который позволит заполнить текстовое поле TextBox
+            BeginInvoke(new SetTextDeleg(SiDataReceived), new object[] { _data });
+        }
+
+        private void SiDataReceived(string _data)
+        {
+            string[] s = _data.Split('\r');
+            s[0] = s[0].Replace('.', ',');
+            _am = Convert.ToDouble(s[0]);
+        }
+
+        private void combo_port_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (serial_port.IsOpen)
+                serial_port.Close();
+            serial_port.PortName = combo_port.SelectedItem.ToString();
+            serial_port.Open();
+        }
+
+        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            serial_port.Close();
+        }
+        //поставить таймер каждую секунду добавляющий точку на график
+        //в сериале дописывать значение тока в инт, а в таймере потом считывать с него
     }
 }
