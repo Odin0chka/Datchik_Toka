@@ -55,11 +55,31 @@ namespace Datchik_Toka
         //Кнопки
         private void StartButtonClick(object sender, EventArgs e)
         {
+            int inter;
+            try
+            {
+                inter = Convert.ToInt32(textBox1.Text);
+                if (inter < 100)
+                    throw new FormatException();
+            }
+            catch(FormatException)
+            {
+                textBox1.Clear();
+                MessageBox.Show("Неверно указана частота обновления графика!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            catch(Exception)
+            {
+                textBox1.Clear();
+                MessageBox.Show("Минимальная возможная частота - 100мс", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            timer1.Interval = inter;
             startButton.Enabled = false;
             stopButton.Enabled = true;
             pauseButton.Enabled = true;
             combo_port.Enabled = false;
-            aboutButton.Visible = false;
+            textBox1.Enabled = false;
 
             chart1.ChartAreas[0].AxisX.ScrollBar.Axis.ScaleView.Position = 0;
             chart1.Series[0].Points.Clear();
@@ -73,7 +93,9 @@ namespace Datchik_Toka
             stopButton.Enabled = false;
             pauseButton.Enabled = false;
             combo_port.Enabled = true;
-            aboutButton.Visible = true;
+            textBox1.Enabled = true;
+            if (pauseButton.Text == "Продолжить")
+                pauseButton.Text = "Пауза";
             timer1.Stop();
         }
 
@@ -83,6 +105,7 @@ namespace Datchik_Toka
             stopButton.Enabled = true;
             pauseButton.Enabled = true;
             combo_port.Enabled = false;
+            textBox1.Enabled = false;
             if (pauseButton.Text == "Пауза")
             {
                 pauseButton.Text = "Продолжить";
@@ -93,12 +116,6 @@ namespace Datchik_Toka
                 pauseButton.Text = "Пауза";
                 timer1.Start();
             }
-        }
-
-        private void AboutButtonClick(object sender, EventArgs e)
-        {
-            AboutBox1 about = new AboutBox1();
-            about.ShowDialog();
         }
 
         //Таймер
@@ -154,5 +171,10 @@ namespace Datchik_Toka
             serial_port.Open();
         }
 
+        private void AboutToolStripMenuItem(object sender, EventArgs e)
+        {
+            AboutBox1 about = new AboutBox1();
+            about.ShowDialog();
+        }
     }
 }
