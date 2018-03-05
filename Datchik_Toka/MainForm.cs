@@ -32,8 +32,9 @@ namespace Datchik_Toka
             string[] ports = SerialPort.GetPortNames();
             if (ports.Length == 0)
             {
-                MessageBox.Show("Устройств не найдено!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Устройств не найдено!\nПодключите устройство и перезапустите приложение.", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 startButton.Enabled = false;
+                numericUpDown1.Enabled = false;
                 return;
             }
 
@@ -55,22 +56,9 @@ namespace Datchik_Toka
         //Кнопки
         private void StartButtonClick(object sender, EventArgs e)
         {
-            int inter;
-            try
+            int inter = Convert.ToInt32(numericUpDown1.Value);
+            if (inter < 100)
             {
-                inter = Convert.ToInt32(textBox1.Text);
-                if (inter < 100)
-                    throw new FormatException();
-            }
-            catch(FormatException)
-            {
-                textBox1.Clear();
-                MessageBox.Show("Неверно указана частота обновления графика!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return;
-            }
-            catch(Exception)
-            {
-                textBox1.Clear();
                 MessageBox.Show("Минимальная возможная частота - 100мс", "Предупреждение", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -79,7 +67,7 @@ namespace Datchik_Toka
             stopButton.Enabled = true;
             pauseButton.Enabled = true;
             combo_port.Enabled = false;
-            textBox1.Enabled = false;
+            numericUpDown1.Enabled = false;
 
             chart1.ChartAreas[0].AxisX.ScrollBar.Axis.ScaleView.Position = 0;
             chart1.Series[0].Points.Clear();
@@ -93,7 +81,7 @@ namespace Datchik_Toka
             stopButton.Enabled = false;
             pauseButton.Enabled = false;
             combo_port.Enabled = true;
-            textBox1.Enabled = true;
+            numericUpDown1.Enabled = true;
             if (pauseButton.Text == "Продолжить")
                 pauseButton.Text = "Пауза";
             timer1.Stop();
@@ -105,7 +93,7 @@ namespace Datchik_Toka
             stopButton.Enabled = true;
             pauseButton.Enabled = true;
             combo_port.Enabled = false;
-            textBox1.Enabled = false;
+            numericUpDown1.Enabled = false;
             if (pauseButton.Text == "Пауза")
             {
                 pauseButton.Text = "Продолжить";
